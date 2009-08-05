@@ -14,6 +14,7 @@ gem 'thoughtbot-quietbacktrace', :lib => 'quietbacktrace'
 gem 'mislav-will_paginate', :version => '~> 2.2.3', :lib => 'will_paginate'
 gem 'rubyist-aasm', :lib => 'aasm'
 gem 'haml-edge', :lib => 'haml'
+gem 'openrain-action_mailer_tls', :lib => 'smtp_tls.rb'
 
 rake 'gems:install', :sudo=>true
 rake 'gems:unpack'
@@ -73,27 +74,23 @@ run 'touch tmp/.gitignore log/.gitignore'
 rake('db:sessions:create')
 generate("authenticated", "user session")
 rake('db:migrate')
-
+gsub_file 'app/controllers/users_controller.rb', /We're sending you an email with your activation code./, ''
+gsub_file 'app/controllers/application_controller.rb', /(class ApplicationController.*)/, "\\1\n  include AuthenticatedSystem"
 gsub_file 'app/controllers/application_controller.rb', /#\s*(filter_parameter_logging :password)/, '\1'
 
-smtp_password = ask('What is your SMTP password?')
+
+# Setup email
+gmail_pass = ask('What is your GMail SMTP password?')
+
+generate('action_mailer_tls') 
+run 'mv config/smtp_gmail.yml.sample config/smtp_gmail.yml'
+gsub_file 'config/smtp_gmail.yml', /your_username@gmail.com/, 'mailer@shovelpunks.com'
+gsub_file 'config/smtp_gmail.yml', /h@ckme/, gmail_pass
 
 # Set up session store initializer
 initializer 'session_store.rb', <<-END
 ActionController::Base.session = { :session_key => '_#{(1..6).map { |x| (65 + rand(26)).chr }.join}_session', :secret => '#{(1..40).map { |x| (65 + rand(26)).chr }.join}' }
 ActionController::Base.session_store = :active_record_store
-END
-
-# Setup mailer initializer
-initializer 'action_mailer_configs.rb', <<-END
-ActionMailer::Base.smtp_settings = {
-  :address         => 'smtp.gmail.com',
-  :port            => 587, 
-  :domain          => 'shovelpunks.com',
-  :user_name       => 'mailer@shovelpunks.com',
-  :password        => '#{smtp_password}',
-  :authentication  => :plain
-}
 END
 
 # Setup backtrace_silencer initialier
@@ -204,7 +201,13 @@ file 'app/views/layouts/_javascript.html.haml', <<-END
 END
 
 file 'app/views/layouts/_header.html.haml', <<-END
-This is the header
+%h3 This is the header
+= link_to('Home', '/')
+|
+= link_to('About', '/about')
+|
+= link_to('Contact', '/contact')
+= render :partial => 'users/user_bar'
 END
 
 file 'app/views/layouts/_footer.html.haml', <<-END
