@@ -19,13 +19,11 @@ rake 'gems:install', :sudo=>true
 rake 'gems:unpack'
 
 #install plugins
-plugin 'hoptoad_notifier', :git => 'git://github.com/thoughtbot/hoptoad_notifier.git'
 plugin 'asset_packager', :git => 'git://github.com/sbecker/asset_packager.git'
 plugin 'limerick_rake', :git => "git://github.com/thoughtbot/limerick_rake.git"
 plugin 'paperclip', :git => 'git://github.com/thoughtbot/paperclip.git'
 plugin 'resource_controller', :git => 'git://github.com/giraffesoft/resource_controller.git'
 plugin 'restful-authentication', :git => 'git://github.com/technoweenie/restful-authentication.git'
-plugin 'role_requirement', :git => 'git://github.com/timcharper/role_requirement.git'
 plugin 'squirrel', :git => "git://github.com/thoughtbot/squirrel.git"
 file 'vendor/plugins/haml/init.rb', <<-END
 require 'rubygems'
@@ -40,13 +38,16 @@ Haml.init_rails(binding)
 END
 
 #Setup Hoptoad
-hoptoad_api_key = ask('What is your Hoptoad API key?')
-
-initializer 'hoptoad.rb', <<-END
-HoptoadNotifier.configure do |config|
-config.api_key = '#{hoptoad_api_key}'
-end
+if yes?('Do you want to install Hoptoad?')
+  hoptoad_api_key = ask('What is your Hoptoad API key?')
+  plugin 'hoptoad_notifier', :git => 'git://github.com/thoughtbot/hoptoad_notifier.git'
+  initializer 'hoptoad.rb', <<-END
+  HoptoadNotifier.configure do |config|
+    config.api_key = '#{hoptoad_api_key}'
+  end
 END
+  gsub_file 'app/controllers/application_controller.rb', /(class ApplicationController.*)/, "\\1\n  include HoptoadNotifier"
+end
 
 #Delete all unecessary files
 run "rm README"
@@ -68,13 +69,11 @@ db/*.sqlite3
 END
 run 'touch tmp/.gitignore log/.gitignore'
 
-# Set up sessions, user model, role, and run migrations
+# Set up sessions, user model, and run migrations
 rake('db:sessions:create')
 generate("authenticated", "user session")
-generate("roles", "Role User")
 rake('db:migrate')
 
-gsub_file 'app/controllers/application_controller.rb', /(class ApplicationController.*)/, "\\1\n  include HoptoadNotifier"
 gsub_file 'app/controllers/application_controller.rb', /#\s*(filter_parameter_logging :password)/, '\1'
 
 smtp_password = ask('What is your SMTP password?')
@@ -150,17 +149,15 @@ file 'config/asset_packages.yml', <<-END
 --- 
 javascripts: 
 - base: 
-  - sound
-  - slider
-  - scriptaculous
   - prototype
   - effects
   - dragdrop
   - controls
-  - builder
   - application
 stylesheets: 
 - base: 
+  - ie
+  - print
   - screen
 END
 
@@ -245,6 +242,12 @@ file 'app/stylesheets/ie.sass', <<-END
 +blueprint-ie
 END
 
+# Generate css files from the sass we just wrote
+run 'compass -u'
+# Create the merged package
+rake('asset:packager:build_all')
+
+
 # Create a simple page controller
 file 'app/controllers/home_controller.rb', <<-END
 class HomeController < ApplicationController
@@ -282,3 +285,9 @@ git :init
 git :add => '.'
 git :commit => "-a -m 'Initial commit'"
 
+if yes? 'Is this a Heroku app?'
+  plugin 'sass_on_heroku', :git => "git://github.com/heroku/sass_on_heroku.git"
+  run "heroku create #{application_name}"
+  git :push => "heroku master"
+  run "heroku rake db:migrate"
+end
