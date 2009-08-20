@@ -8,13 +8,12 @@ gem 'aws-s3', :version => '0.6.2', :lib => 'aws/s3'
 gem 'chriseppstein-compass', :version => '0.6.15', :lib => 'compass'
 gem 'mocha'
 gem 'thoughtbot-shoulda', :lib => 'shoulda'
-gem 'thoughtbot-paperclip', :lib => 'paperclip'
 gem 'thoughtbot-factory_girl', :lib => 'factory_girl'
 gem 'thoughtbot-quietbacktrace', :lib => 'quietbacktrace'
 gem 'mislav-will_paginate', :version => '~> 2.2.3', :lib => 'will_paginate'
-gem 'rubyist-aasm', :lib => 'aasm'
 gem 'haml-edge', :lib => 'haml'
 gem 'openrain-action_mailer_tls', :lib => 'smtp_tls.rb'
+gem 'twitter-auth', :lib => 'twitter_auth'
 
 rake 'gems:install', :sudo=>true
 rake 'gems:unpack'
@@ -22,9 +21,7 @@ rake 'gems:unpack'
 #install plugins
 plugin 'asset_packager', :git => 'git://github.com/sbecker/asset_packager.git'
 plugin 'limerick_rake', :git => "git://github.com/thoughtbot/limerick_rake.git"
-plugin 'paperclip', :git => 'git://github.com/thoughtbot/paperclip.git'
 plugin 'resource_controller', :git => 'git://github.com/giraffesoft/resource_controller.git'
-plugin 'restful-authentication', :git => 'git://github.com/technoweenie/restful-authentication.git'
 plugin 'squirrel', :git => "git://github.com/thoughtbot/squirrel.git"
 file 'vendor/plugins/haml/init.rb', <<-END
 require 'rubygems'
@@ -58,6 +55,7 @@ run "rm public/robots.txt"
 
 #Setup git ignore file
 file '.gitignore', <<-END
+.DS_Store
 config/database.yml
 db/schema.rb
 log/*.log
@@ -68,13 +66,10 @@ db/*.sqlite3
 END
 run 'touch tmp/.gitignore log/.gitignore'
 
-# Set up sessions, user model, and run migrations
+# Set up sessions, twitter authentication, and run migrations
 rake('db:sessions:create')
-generate("authenticated", "user session")
+generate("twitter_auth")
 rake('db:migrate')
-gsub_file 'app/controllers/users_controller.rb', /We're sending you an email with your activation code./, ''
-gsub_file 'app/controllers/application_controller.rb', /(class ApplicationController.*)/, "\\1\n  include AuthenticatedSystem"
-gsub_file 'app/controllers/application_controller.rb', /#\s*(filter_parameter_logging :password)/, '\1'
 
 
 # Setup email
@@ -205,7 +200,6 @@ file 'app/views/layouts/_header.html.haml', <<-END
 = link_to('About', '/about')
 |
 = link_to('Contact', '/contact')
-= render :partial => 'users/user_bar'
 END
 
 file 'app/views/layouts/_footer.html.haml', <<-END
