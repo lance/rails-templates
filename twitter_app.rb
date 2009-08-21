@@ -12,6 +12,7 @@ gem 'thoughtbot-factory_girl', :lib => 'factory_girl'
 gem 'thoughtbot-quietbacktrace', :lib => 'quietbacktrace'
 gem 'mislav-will_paginate', :version => '~> 2.2.3', :lib => 'will_paginate'
 gem 'haml-edge', :lib => 'haml'
+gem 'mhennemeyer-matchy', :lib => 'matchy'
 gem 'openrain-action_mailer_tls', :lib => 'smtp_tls.rb'
 gem 'twitter-auth', :lib => 'twitter_auth'
 
